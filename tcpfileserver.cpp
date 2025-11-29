@@ -59,47 +59,73 @@ void TcpFileServer::acceptConnection(){
     tcpServer.close();
 }
 
-void TcpFileServer::updateServerProgress(){
+void TcpFileServer::updateServerProgress() {
     QDataStream in(tcpServerConnection);
     in.setVersion(QDataStream::Qt_4_6);
-    if(byteReceived <= sizeof(qint64)*2){
-        if((fileNameSize == 0) && (tcpServerConnection->bytesAvailable() >=
-                sizeof(qint64)*2))
-        {
+
+    if (byteReceived <= sizeof(qint64) * 2) {
+
+        if ((fileNameSize == 0) &&
+            (tcpServerConnection->bytesAvailable() >= sizeof(qint64) * 2)) {
+
             in >> totalBytes >> fileNameSize;
-            byteReceived += sizeof(qint64)*2;
-        }
-        if((fileNameSize !=0) && (tcpServerConnection->bytesAvailable() >=(fileNameSize)){
-            in >> fileName;
-            byteReceived += fileNameSize;
-            localFile = new QFile(fileName);
-            if(!localFile->open(QFile::WriteOnly)){
-                QMessageBox::warning(this,tr("應用程式"),tr("無法讀取檔案%1:\n%2.").arg(fileName).arg(localFile->errorString()));
-                return;
-            }
-        }else{
-            return;
+            byteReceived += sizeof(qint64) * 2;
         }
 
-    if(byteReceived <totalBytes){
+        if ((fileNameSize != 0) &&
+            (tcpServerConnection->bytesAvailable() >= fileNameSize)) {
+
+            in >> fileName;
+            byteReceived += fileNameSize;
+
+            localFile = new QFile(fileName);
+            if (!localFile->open(QFile::WriteOnly)) {
+                QMessageBox::warning(
+                    this, tr("應用程式"),
+                    tr("無法讀取檔案%1:\n%2.")
+                        .arg(fileName)
+                        .arg(localFile->errorString()));
+                return;
+            }
+        }
+        else {
+            return;
+        }
+    }
+
+    if (byteReceived < totalBytes) {
         byteReceived += tcpServerConnection->bytesAvailable();
         inBlock = tcpServerConnection->readAll();
         localFile->write(inBlock);
-        inBlock->resize(0);
+        inBlock.resize(0);
     }
+
     serverProgressBar->setMaximum(totalBytes);
     serverProgressBar->setValue(byteReceived);
-    QDebug()<<byteReceived;
-    serverStatusLabel->setText(tr("已接收 %1 Bytes")).arg(byteReceived);
+    qDebug() << byteReceived;
 
-    if(byteReceived == totalBytes){
+    serverStatusLabel->setText(
+        tr("已接收 %1 Bytes").arg(byteReceived));
+
+    if (byteReceived == totalBytes) {
         tcpServerConnection->close();
         startButton->setEnabled(true);
-        localFile->fileName();
         localFile->close();
         start();
     }
 }
-void TcpFileServer::displayError(QAbstractSocket::SocketError socketError){
 
+void TcpFileServer::displayError(QAbstractSocket::SocketError socketError)
+{
+    if (socketError == QTcpSocket::RemoteHostClosedError)
+        return;
+
+    QMessageBox::information(this, tr("網絡錯誤"),
+                             tr("產生如下錯誤: %1.")
+                                 .arg(tcpServerConnection->errorString()));
+    tcpServerConnection->close();
+    serverProgressBar->reset();
+    serverStatusLabel->setText(tr("伺服器就緒"));
+    startButton->setEnabled(true);
 }
+

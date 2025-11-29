@@ -28,10 +28,10 @@ private:
     QTcpSocket       *tcpServerConnection;
     qint64           totalBytes;
     qint64           byteReceived;
-    qint64           *fileNameSize;
-    QString          *fileName;
+    qint64           fileNameSize;
+    QString          fileName;
     QFile            *localFile;
-    QByteArray       *inBlock;
+    QByteArray       inBlock;
 
 };
 #endif // TCPFILESERVER_H
